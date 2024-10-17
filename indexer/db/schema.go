@@ -94,10 +94,19 @@ func init() {
 			"change_type": {
 				"type": "long"
 			},
-			"change_balance": {
+			"balance_before": {
+				"type": "long"
+			},
+			"balance_after": {
+				"type": "long"
+			},
+			"balance_change": {
 				"type": "long"
 			},
 			"txid": {
+				"type": "keyword"
+			},
+			"txindex": {
 				"type": "long"
 			}
 		}
