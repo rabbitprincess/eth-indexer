@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/attestantio/go-eth2-client/http"
 	beacon "github.com/attestantio/go-eth2-client/http"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog"
@@ -35,6 +34,6 @@ func NewClient(logger *zerolog.Logger, executionURL, beaconURL string) (*Client,
 	return &Client{
 		logger:    logger,
 		execution: execClient,
-		beacon:    c.(*http.Service),
+		beacon:    c.(*beacon.Service),
 	}, nil
 }
