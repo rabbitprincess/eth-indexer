@@ -45,6 +45,7 @@ func NewElasticsearchDbController(ctx context.Context, logger *zerolog.Logger, e
 			logger.Error().Str("dbURL", esURL).Int("retry", retry).Err(err).Msg("Could not connect to es database")
 			return nil, err
 		}
+		retry++
 		logger.Info().Str("dbURL", esURL).Int("retry", retry).Err(err).Msg("Could not connect to es database, retrying")
 		time.Sleep(time.Second)
 	}
