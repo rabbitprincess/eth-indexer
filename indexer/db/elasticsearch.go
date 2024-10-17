@@ -12,11 +12,40 @@ import (
 	"time"
 
 	"github.com/olivere/elastic/v7"
+	"github.com/rs/zerolog"
 )
 
-// ElasticsearchDbController implements DbController
-type ElasticsearchDbController struct {
+// EsDBController implements DbController
+type EsDBController struct {
+	logger *zerolog.Logger
 	client *elastic.Client
+}
+
+// NewElasticsearchDbController creates a new instance of ElasticsearchDbController
+func NewElasticsearchDbController(ctx context.Context, logger *zerolog.Logger, esURL string) (*EsDBController, error) {
+	client, err := NewElasticClient(esURL)
+	if err != nil {
+		return nil, err
+	}
+	controller := &EsDBController{
+		logger: logger,
+		client: client,
+	}
+
+	retry := 0
+	for {
+		if ok := controller.HealthCheck(ctx); ok == true {
+			break
+		}
+		if retry > 10 {
+			logger.Error().Str("dbURL", esURL).Int("retry", retry).Err(err).Msg("Could not connect to es database")
+			return nil, err
+		}
+		logger.Info().Str("dbURL", esURL).Int("retry", retry).Err(err).Msg("Could not connect to es database, retrying")
+		time.Sleep(time.Second)
+	}
+
+	return controller, nil
 }
 
 // NewElasticClient creates a new instance of elastic.Client
@@ -41,16 +70,7 @@ func NewElasticClient(esURL string) (*elastic.Client, error) {
 	return client, nil
 }
 
-// NewElasticsearchDbController creates a new instance of ElasticsearchDbController
-func NewElasticsearchDbController(ctx context.Context, esURL string) (*ElasticsearchDbController, error) {
-	client, err := NewElasticClient(esURL)
-	if err != nil {
-		return nil, err
-	}
-	return &ElasticsearchDbController{client: client}, nil
-}
-
-func (esdb *ElasticsearchDbController) HealthCheck(ctx context.Context) bool {
+func (esdb *EsDBController) HealthCheck(ctx context.Context) bool {
 	_, err := esdb.client.ClusterHealth().Do(ctx)
 	if err != nil {
 		return false
@@ -58,12 +78,12 @@ func (esdb *ElasticsearchDbController) HealthCheck(ctx context.Context) bool {
 	return true
 }
 
-func (esdb *ElasticsearchDbController) Exists(indexName string, id string) bool {
+func (esdb *EsDBController) Exists(indexName string, id string) bool {
 	ans, _ := esdb.client.Exists().Index(indexName).Id(id).Do(context.Background())
 	return ans
 }
 
-func (esdb *ElasticsearchDbController) Update(document DocType, indexName string, id string) error {
+func (esdb *EsDBController) Update(document DocType, indexName string, id string) error {
 	_, err := esdb.client.Update().Index(indexName).Id(id).Doc(document).Upsert(document).Do(context.Background())
 	if errConflict, ok := err.(*elastic.Error); ok && errConflict.Status == 409 {
 		return nil // ignore version conflict exception
@@ -73,13 +93,13 @@ func (esdb *ElasticsearchDbController) Update(document DocType, indexName string
 
 // Insert inserts a single document using the updata params
 // It returns the number of inserted documents (1) or an error
-func (esdb *ElasticsearchDbController) Insert(document DocType, indexName string) error {
+func (esdb *EsDBController) Insert(document DocType, indexName string) error {
 	_, err := esdb.client.Index().Index(indexName).OpType("index").Id(document.GetID()).BodyJson(document).Do(context.Background())
 	return err
 }
 
 // Delete removes documents specified by the query params
-func (esdb *ElasticsearchDbController) Delete(params QueryParams) (uint64, error) {
+func (esdb *EsDBController) Delete(params QueryParams) (uint64, error) {
 	var query elastic.Query
 	if params.IntegerRange != nil {
 		query = elastic.NewRangeQuery(params.IntegerRange.Field).From(params.IntegerRange.Min).To(params.IntegerRange.Max)
@@ -95,7 +115,7 @@ func (esdb *ElasticsearchDbController) Delete(params QueryParams) (uint64, error
 }
 
 // Count returns the number of indexed documents
-func (esdb *ElasticsearchDbController) Count(params QueryParams) (int64, error) {
+func (esdb *EsDBController) Count(params QueryParams) (int64, error) {
 	var query elastic.Query
 	if params.IntegerRange != nil {
 		query = elastic.NewRangeQuery(params.IntegerRange.Field).From(params.IntegerRange.Min).To(params.IntegerRange.Max)
@@ -106,7 +126,7 @@ func (esdb *ElasticsearchDbController) Count(params QueryParams) (int64, error) 
 }
 
 // SelectOne selects a single document
-func (esdb *ElasticsearchDbController) SelectOne(params QueryParams, createDocument CreateDocFunction) (DocType, error) {
+func (esdb *EsDBController) SelectOne(params QueryParams, createDocument CreateDocFunction) (DocType, error) {
 	service := esdb.client.Search().Index(params.IndexName)
 	if params.IntegerRange != nil {
 		query := elastic.NewRangeQuery(params.IntegerRange.Field).From(params.IntegerRange.Min).To(params.IntegerRange.Max)
@@ -139,7 +159,7 @@ func (esdb *ElasticsearchDbController) SelectOne(params QueryParams, createDocum
 }
 
 // UpdateAlias updates an alias with a new index name and delete stale indices
-func (esdb *ElasticsearchDbController) UpdateAlias(aliasName string, indexName string) error {
+func (esdb *EsDBController) UpdateAlias(aliasName string, indexName string) error {
 	ctx := context.Background()
 	svc := esdb.client.Alias()
 	res, err := esdb.client.Aliases().Index("_all").Do(ctx)
@@ -166,7 +186,7 @@ func (esdb *ElasticsearchDbController) UpdateAlias(aliasName string, indexName s
 }
 
 // GetExistingIndexPrefix checks for existing indices and returns the prefix, if any
-func (esdb *ElasticsearchDbController) GetExistingIndexPrefix(aliasName string, documentType string) (bool, string, error) {
+func (esdb *EsDBController) GetExistingIndexPrefix(aliasName string, documentType string) (bool, string, error) {
 	res, err := esdb.client.Aliases().Index("_all").Do(context.Background())
 	if err != nil {
 		return false, "", err
@@ -180,7 +200,7 @@ func (esdb *ElasticsearchDbController) GetExistingIndexPrefix(aliasName string, 
 }
 
 // CreateIndex creates index according to documentType definition
-func (esdb *ElasticsearchDbController) CreateIndex(indexName string, documentType string) error {
+func (esdb *EsDBController) CreateIndex(indexName string, documentType string) error {
 	createIndex, err := esdb.client.CreateIndex(indexName).BodyString(EsSchema[documentType]).Do(context.Background())
 	if err != nil {
 		return err
@@ -192,7 +212,7 @@ func (esdb *ElasticsearchDbController) CreateIndex(indexName string, documentTyp
 }
 
 // Scroll creates a new scroll instance with the specified query and unmarshal function
-func (esdb *ElasticsearchDbController) Scroll(params QueryParams, createDocument CreateDocFunction) ScrollInstance {
+func (esdb *EsDBController) Scroll(params QueryParams, createDocument CreateDocFunction) ScrollInstance {
 	fsc := elastic.NewFetchSourceContext(true).Include(params.SelectFields...)
 
 	scroll := esdb.client.Scroll(params.IndexName)
@@ -256,7 +276,7 @@ func (scroll *EsScrollInstance) Next() (DocType, error) {
 	return nil, io.EOF
 }
 
-func (esdb *ElasticsearchDbController) InsertBulk(indexName string) BulkInstance {
+func (esdb *EsDBController) InsertBulk(indexName string) BulkInstance {
 	return &EsBulkInstance{
 		bulk: esdb.client.Bulk().Index(indexName),
 		ctx:  context.Background(),

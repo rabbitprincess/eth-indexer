@@ -16,7 +16,7 @@ type Client struct {
 	beacon    *beacon.Service
 }
 
-func NewClient(logger *zerolog.Logger, executionURL, beaconURL string) (*Client, error) {
+func NewClient(ctx context.Context, logger *zerolog.Logger, executionURL, beaconURL string) (*Client, error) {
 	if logger == nil {
 		logger = &log.Logger
 	}
@@ -26,7 +26,7 @@ func NewClient(logger *zerolog.Logger, executionURL, beaconURL string) (*Client,
 		return nil, fmt.Errorf("failed to connect to execution client: %w", err)
 	}
 
-	c, err := beacon.New(context.Background(), beacon.WithAddress(beaconURL))
+	c, err := beacon.New(ctx, beacon.WithAddress(beaconURL))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to beacon client: %w", err)
 	}
