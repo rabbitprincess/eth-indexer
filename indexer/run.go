@@ -45,12 +45,33 @@ func readPrealloc(filename string) (types.GenesisAlloc, error) {
 }
 
 func (i *Indexer) RunTraceBlock(ctx context.Context) error {
-	if i.cfg.To <= 0 {
+	if i.cfg.To == 0 {
 		i.cfg.To = math.MaxInt
 	}
 
-	for blockNumber := i.cfg.From; blockNumber <= i.cfg.To; blockNumber++ {
+	blockNumber := i.cfg.From
+	for {
+		if blockNumber > i.cfg.To {
+			break
+		}
 
+		if i.cfg.VerifyBalance {
+			for _, dirty := range i.dirtyAddresses {
+				verifyBalance, err := i.client.GetAccountBalance(ctx, dirty.address, blockNumber)
+				if err != nil {
+					return err
+				}
+				if verifyBalance != dirty.balance {
+					i.logger.Error().Uint64("blockNumber", blockNumber).Str("address", dirty.address).Uint64("balance", dirty.balance).Uint64("verifyBalance", verifyBalance).Msg("balance mismatch")
+					return err
+				}
+			}
+		}
+
+		// clean cache
+		i.dirtyAddresses = i.dirtyAddresses[:0]
+
+		blockNumber++
 	}
 
 	return nil

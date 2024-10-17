@@ -15,8 +15,8 @@ type RunConfig struct {
 	NetworkName string
 
 	VerifyBalance bool
-	From          int
-	To            int
+	From          uint64
+	To            uint64
 }
 
 type Indexer struct {
@@ -25,6 +25,11 @@ type Indexer struct {
 
 	client *client.Client
 	db     db.DbController
+
+	dirtyAddresses []struct {
+		address string
+		balance uint64
+	}
 }
 
 func NewIndexer(ctx context.Context, logger *zerolog.Logger, executionURL, beaconURL, esURL string) (*Indexer, error) {
@@ -48,6 +53,10 @@ func NewIndexer(ctx context.Context, logger *zerolog.Logger, executionURL, beaco
 		logger: logger,
 		client: c,
 		db:     d,
+		dirtyAddresses: make([]struct {
+			address string
+			balance uint64
+		}, 0, 1024),
 	}, nil
 }
 
