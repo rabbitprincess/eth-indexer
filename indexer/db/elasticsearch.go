@@ -23,6 +23,10 @@ type EsDBController struct {
 
 // NewElasticsearchDbController creates a new instance of ElasticsearchDbController
 func NewElasticsearchDbController(ctx context.Context, logger *zerolog.Logger, esURL string) (*EsDBController, error) {
+	if esURL == "" {
+		return nil, nil
+	}
+
 	client, err := NewElasticClient(esURL)
 	if err != nil {
 		return nil, err

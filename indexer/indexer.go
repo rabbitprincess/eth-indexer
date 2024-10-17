@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/rabbitprincess/eth-indexer/indexer/client"
 	"github.com/rabbitprincess/eth-indexer/indexer/db"
@@ -9,7 +10,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type RunConfig struct {
+	NetworkID   *big.Int
+	NetworkName string
+
+	VerifyBalance bool
+	From          int
+	To            int
+}
+
 type Indexer struct {
+	cfg    *RunConfig
 	logger *zerolog.Logger
 
 	client *client.Client
@@ -38,4 +49,16 @@ func NewIndexer(ctx context.Context, logger *zerolog.Logger, executionURL, beaco
 		client: c,
 		db:     d,
 	}, nil
+}
+
+func (i *Indexer) Run(ctx context.Context, cfg *RunConfig) error {
+	i.cfg = cfg
+
+	// start indexing
+
+	return nil
+}
+
+func (i *Indexer) Stop() {
+	// stop indexing
 }
