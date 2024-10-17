@@ -11,6 +11,6 @@ const (
 	MiningReward
 	StakingDeposit
 	StakingReward
-	StrkingSlashing
+	StakingSlashing
 	StakingWithdrawal
 )
