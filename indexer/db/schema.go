@@ -35,8 +35,11 @@ type AccountBalanceHistory struct {
 	BlockNumber    uint64 `json:"block_number" db:"block_number"`
 	BlockTimestamp string `json:"block_timestamp" db:"block_timestamp"`
 	ChangeType     uint64 `json:"change_type" db:"change_type"`
-	ChangeBalance  uint64 `json:"change_balance" db:"change_balance"`
+	BalanceBefore  uint64 `json:"balance_before" db:"balance_before"`
+	BalanceAfter   uint64 `json:"balance_after" db:"balance_after"`
+	BalanceChange  uint64 `json:"change_balance" db:"balance_change"`
 	Txid           uint64 `json:"txid" db:"txid"`
+	TxIndex        uint64 `json:"txindex" db:"txindex"`
 }
 
 var EsSchema map[string]string
