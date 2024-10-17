@@ -152,7 +152,7 @@ func (esdb *EsDBController) SelectOne(params QueryParams, createDocument CreateD
 		return nil, nil
 	}
 
-	// Unmarshall document
+	// Unmarshal document
 	hit := res.Hits.Hits[0]
 	document := createDocument()
 	if err := json.Unmarshal([]byte(hit.Source), document); err != nil {
