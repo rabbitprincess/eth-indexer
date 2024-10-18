@@ -68,7 +68,7 @@ func (i *Indexer) RunTraceBlock(ctx context.Context) error {
 
 	blockNumber := i.cfg.From
 	for {
-		// check if finished
+		i.logger.Info().Uint64("blockNumber", blockNumber).Msg("Trace block")
 		if blockNumber > i.cfg.To {
 			i.logger.Info().Uint64("to", blockNumber).Msg("Trace block finished")
 			break

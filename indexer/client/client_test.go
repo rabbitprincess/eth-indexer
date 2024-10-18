@@ -11,7 +11,9 @@ import (
 )
 
 var (
-	rpcUrl    = "https://autumn-magical-orb.ethereum-holesky.quiknode.pro/9982c719a7beb2e0ba7b076175fbb12e07c586e8"
+	rpcUrl = "https://autumn-magical-orb.ethereum-holesky.quiknode.pro/9982c719a7beb2e0ba7b076175fbb12e07c586e8"
+	// rpcUrl = "https://ethereum-rpc.publicnode.com"
+
 	beaconUrl = ""
 )
 
@@ -43,7 +45,7 @@ func TestTraceBlock(t *testing.T) {
 	client, err := NewClient(ctx, nil, rpcUrl, beaconUrl)
 	require.NoError(t, err)
 
-	res, err := client.TraceBlock(ctx, 2550745)
+	res, err := client.TraceBlock(ctx, 656270)
 	require.NoError(t, err)
 
 	resJson, err := json.MarshalIndent(res, "", "\t")
@@ -56,7 +58,7 @@ func TestBalanceOf(t *testing.T) {
 	client, err := NewClient(ctx, nil, rpcUrl, beaconUrl)
 	require.NoError(t, err)
 
-	balance, err := client.GetAccountBalance(ctx, "0x9E415A096fF77650dc925dEA546585B4adB322B6", 0)
+	balance, err := client.GetAccountBalance(ctx, "0x9E415A096fF77650dc925dEA546585B4adB322B6", 10000)
 	require.NoError(t, err)
 	fmt.Println(balance)
 
