@@ -70,10 +70,12 @@ func (d *DTO) AddAccountBalance(blockNumber uint64, blockTimeStamp uint64, accou
 	}
 }
 
-func (d *DTO) GetAccountBalance(account string, dbController db.DbController) (*schema.AccountBalance, error) {
+func (d *DTO) GetAccountBalance(account string, dbController db.DbController, client *client.Client) (*schema.AccountBalance, error) {
+	// get from cache
 	if accBalance, exist := d.accountBalance[account]; exist {
 		return accBalance, nil
 	}
+	// get from db
 	doc, err := dbController.SelectOne(db.QueryParams{
 		IndexName: schema.TableAccountBalance,
 		StringMatch: &db.StringMatchQuery{
@@ -88,7 +90,22 @@ func (d *DTO) GetAccountBalance(account string, dbController db.DbController) (*
 	if err != nil {
 		return nil, err
 	}
-	return doc.(*schema.AccountBalance), nil
+	if doc != nil {
+		d.accountBalance[account] = doc.(*schema.AccountBalance)
+		return doc.(*schema.AccountBalance), nil
+	}
+
+	// get from server
+	balance, err := client.GetAccountBalance(context.Background(), account, d.blockNumber)
+	if err != nil {
+		return nil, err
+	}
+	return &schema.AccountBalance{
+		Account:        account,
+		BlockNumber:    d.blockNumber,
+		BlockTimestamp: 0,
+		Balance:        balance.String(),
+	}, nil
 }
 
 func (d *DTO) AddBalanceChange(blockNumber uint64, blockTimeStamp uint64, account string, changeType schema.BalanceChange, balanceBefore, balanceAfter, balanceChange string, txid string, txIndex uint64) {
