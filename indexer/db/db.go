@@ -1,13 +1,15 @@
 package db
 
+import "github.com/rabbitprincess/eth-indexer/indexer/schema"
+
 type DbController interface {
 	Exists(indexName string, id string) bool
-	Insert(document DocType, indexName string) error
+	Insert(document schema.DocType, indexName string) error
 	InsertBulk(indexName string) BulkInstance
-	Update(document DocType, indexName string, id string) error
+	Update(document schema.DocType, indexName string, id string) error
 	Delete(params QueryParams) (uint64, error)
 	Count(params QueryParams) (int64, error)
-	SelectOne(params QueryParams, createDocument CreateDocFunction) (DocType, error)
+	SelectOne(params QueryParams, createDocument CreateDocFunction) (schema.DocType, error)
 	Scroll(params QueryParams, createDocument CreateDocFunction) ScrollInstance
 	GetExistingIndexPrefix(aliasName string, documentType string) (bool, string, error)
 	CreateIndex(indexName string, documentType string) error
@@ -38,13 +40,13 @@ type QueryParams struct {
 	StringMatch  *StringMatchQuery
 }
 
-type CreateDocFunction = func() DocType
+type CreateDocFunction = func() schema.DocType
 
 type ScrollInstance interface {
-	Next() (DocType, error)
+	Next() (schema.DocType, error)
 }
 
 type BulkInstance interface {
-	Add(document DocType)
+	Add(document schema.DocType)
 	Commit() error
 }

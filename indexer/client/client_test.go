@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -48,4 +49,16 @@ func TestTraceBlock(t *testing.T) {
 	resJson, err := json.MarshalIndent(res, "", "\t")
 	require.NoError(t, err)
 	fmt.Println(string(resJson))
+}
+
+func TestBalanceOf(t *testing.T) {
+	ctx := context.Background()
+	client, err := NewClient(ctx, nil, rpcUrl, beaconUrl)
+	require.NoError(t, err)
+
+	balance, err := client.GetAccountBalance(ctx, "0x9E415A096fF77650dc925dEA546585B4adB322B6", 0)
+	require.NoError(t, err)
+	fmt.Println(balance)
+
+	fmt.Println(hex.EncodeToString(balance.Bytes()))
 }

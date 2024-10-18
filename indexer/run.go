@@ -5,8 +5,10 @@ import (
 	"embed"
 	"encoding/json"
 	"math"
+	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/rabbitprincess/eth-indexer/indexer/schema"
 )
 
 func (i *Indexer) RunPreAlloc(ctx context.Context) error {
@@ -19,11 +21,26 @@ func (i *Indexer) RunPreAlloc(ctx context.Context) error {
 
 	for address, account := range ga {
 		// save to db
-		_ = address
-		_ = account
+		addr := address.String()
+		bal := account.Balance.String()
+
+		i.dto.AddAccountBalance(0, 0, addr, bal)
+		i.dto.AddBalanceChange(0, 0, address.String(), schema.PreAlloc, "0", bal, bal, "", 0)
 	}
 
+	if i.cfg.VerifyBalance {
+		err = i.dto.VerifyBalance(ctx, 0, i.client)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = i.dto.Commit(i.db)
+	if err != nil {
+		return err
+	}
 	return nil
+
 }
 
 //go:embed allocs
@@ -51,25 +68,44 @@ func (i *Indexer) RunTraceBlock(ctx context.Context) error {
 
 	blockNumber := i.cfg.From
 	for {
+		// check if finished
 		if blockNumber > i.cfg.To {
+			i.logger.Info().Uint64("to", blockNumber).Msg("Trace block finished")
 			break
 		}
 
+		// wait new block
+		latestBlock, err := i.client.GetLatestBlockNumber(ctx)
+		if err != nil {
+			return err
+		} else if blockNumber > latestBlock {
+			i.logger.Info().Uint64("latestBlock", latestBlock).Uint64("blockNumber", blockNumber).Msg("waiting for new block...")
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		// init dto
+		i.dto.Init(blockNumber)
+
+		// trace balance
+		trace, err := i.client.TraceBlock(ctx, blockNumber)
+		if err != nil {
+			return err
+		}
+		_ = trace
+
+		// verify balance
 		if i.cfg.VerifyBalance {
-			for _, dirty := range i.dirtyAddresses {
-				verifyBalance, err := i.client.GetAccountBalance(ctx, dirty.address, blockNumber)
-				if err != nil {
-					return err
-				}
-				if verifyBalance != dirty.balance {
-					i.logger.Error().Uint64("blockNumber", blockNumber).Str("address", dirty.address).Uint64("balance", dirty.balance).Uint64("verifyBalance", verifyBalance).Msg("balance mismatch")
-					return err
-				}
+			err := i.dto.VerifyBalance(ctx, blockNumber, i.client)
+			if err != nil {
+				return err
 			}
 		}
 
-		// clean cache
-		i.dirtyAddresses = i.dirtyAddresses[:0]
+		err = i.dto.Commit(i.db)
+		if err != nil {
+			return err
+		}
 
 		blockNumber++
 	}

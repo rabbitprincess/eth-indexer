@@ -11,9 +11,8 @@ import (
 )
 
 type RunConfig struct {
-	NetworkID   *big.Int
-	NetworkName string
-
+	NetworkID     *big.Int
+	NetworkName   string
 	VerifyBalance bool
 	From          uint64
 	To            uint64
@@ -26,10 +25,7 @@ type Indexer struct {
 	client *client.Client
 	db     db.DbController
 
-	dirtyAddresses []struct {
-		address string
-		balance uint64
-	}
+	dto *DTO
 }
 
 func NewIndexer(ctx context.Context, logger *zerolog.Logger, executionURL, beaconURL, esURL string) (*Indexer, error) {
@@ -49,21 +45,31 @@ func NewIndexer(ctx context.Context, logger *zerolog.Logger, executionURL, beaco
 		return nil, err
 	}
 
+	dto := &DTO{}
+	dto.Init(0)
+
 	return &Indexer{
 		logger: logger,
 		client: c,
 		db:     d,
-		dirtyAddresses: make([]struct {
-			address string
-			balance uint64
-		}, 0, 1024),
+		dto:    dto,
 	}, nil
 }
 
 func (i *Indexer) Run(ctx context.Context, cfg *RunConfig) error {
+	var err error
 	i.cfg = cfg
 
 	// start indexing
+	err = i.RunPreAlloc(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = i.RunTraceBlock(ctx)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

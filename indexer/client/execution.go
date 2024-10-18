@@ -11,15 +11,15 @@ func (c *Client) GetLatestBlockNumber(ctx context.Context) (uint64, error) {
 	return c.execution.BlockNumber(ctx)
 }
 
-func (c *Client) GetAccountBalance(ctx context.Context, account string, blockNumber uint64) (uint64, error) {
+func (c *Client) GetAccountBalance(ctx context.Context, account string, blockNumber uint64) (*big.Int, error) {
 	acc := common.HexToAddress(account)
 	num := big.NewInt(int64(blockNumber))
 
 	balance, err := c.execution.BalanceAt(ctx, acc, num)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return balance.Uint64(), nil
+	return balance, nil
 }
 
 func (c *Client) TraceTransaction(ctx context.Context, txHash string) (interface{}, error) {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/olivere/elastic/v7"
+	"github.com/rabbitprincess/eth-indexer/indexer/schema"
 	"github.com/rs/zerolog"
 )
 
@@ -88,7 +89,7 @@ func (esdb *EsDBController) Exists(indexName string, id string) bool {
 	return ans
 }
 
-func (esdb *EsDBController) Update(document DocType, indexName string, id string) error {
+func (esdb *EsDBController) Update(document schema.DocType, indexName string, id string) error {
 	_, err := esdb.client.Update().Index(indexName).Id(id).Doc(document).Upsert(document).Do(context.Background())
 	if errConflict, ok := err.(*elastic.Error); ok && errConflict.Status == 409 {
 		return nil // ignore version conflict exception
@@ -98,7 +99,7 @@ func (esdb *EsDBController) Update(document DocType, indexName string, id string
 
 // Insert inserts a single document using the updata params
 // It returns the number of inserted documents (1) or an error
-func (esdb *EsDBController) Insert(document DocType, indexName string) error {
+func (esdb *EsDBController) Insert(document schema.DocType, indexName string) error {
 	_, err := esdb.client.Index().Index(indexName).OpType("index").Id(document.GetID()).BodyJson(document).Do(context.Background())
 	return err
 }
@@ -131,7 +132,7 @@ func (esdb *EsDBController) Count(params QueryParams) (int64, error) {
 }
 
 // SelectOne selects a single document
-func (esdb *EsDBController) SelectOne(params QueryParams, createDocument CreateDocFunction) (DocType, error) {
+func (esdb *EsDBController) SelectOne(params QueryParams, createDocument CreateDocFunction) (schema.DocType, error) {
 	service := esdb.client.Search().Index(params.IndexName)
 	if params.IntegerRange != nil {
 		query := elastic.NewRangeQuery(params.IntegerRange.Field).From(params.IntegerRange.Min).To(params.IntegerRange.Max)
@@ -206,7 +207,7 @@ func (esdb *EsDBController) GetExistingIndexPrefix(aliasName string, documentTyp
 
 // CreateIndex creates index according to documentType definition
 func (esdb *EsDBController) CreateIndex(indexName string, documentType string) error {
-	createIndex, err := esdb.client.CreateIndex(indexName).BodyString(EsSchema[documentType]).Do(context.Background())
+	createIndex, err := esdb.client.CreateIndex(indexName).BodyString(schema.EsSchema[documentType]).Do(context.Background())
 	if err != nil {
 		return err
 	}
@@ -254,7 +255,7 @@ type EsScrollInstance struct {
 }
 
 // Next returns the next document of a scroll or io.EOF
-func (scroll *EsScrollInstance) Next() (DocType, error) {
+func (scroll *EsScrollInstance) Next() (schema.DocType, error) {
 	// Load next part of scroll
 	if scroll.result == nil || scroll.current >= scroll.currentLength {
 		result, err := scroll.scrollService.Do(scroll.ctx)
@@ -293,7 +294,7 @@ type EsBulkInstance struct {
 	ctx  context.Context
 }
 
-func (bulk *EsBulkInstance) Add(document DocType) {
+func (bulk *EsBulkInstance) Add(document schema.DocType) {
 	req := elastic.NewBulkIndexRequest().OpType("create").Id(document.GetID()).Doc(document)
 	// req := elastic.NewBulkUpdateRequest().Id(document.GetID()).Doc(document).DocAsUpsert(true)
 	bulk.bulk.Add(req)
